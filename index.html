@@ -316,9 +316,34 @@
             img.src = primarySrc;
         }
 
-        // Function to get user location using multiple services
+        // Enhanced location detection with multiple fallback services
         function getUserLocation() {
-            // Try ip-api.com first (no API key required)
+            // Try ipapi.co first (no API key required)
+            fetch('https://ipapi.co/json/')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('ipapi.co request failed');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    userLocation = {
+                        city: data.city || 'Unknown',
+                        region: data.region || 'Unknown',
+                        country: data.country_name || 'Unknown',
+                        ip: data.ip || 'Unknown'
+                    };
+                    updateLocationDisplay();
+                })
+                .catch(error => {
+                    console.error('Error with ipapi.co:', error);
+                    // Try ip-api.com as fallback
+                    tryIpApi();
+                });
+        }
+
+        // Fallback to ip-api.com
+        function tryIpApi() {
             fetch('http://ip-api.com/json/')
                 .then(response => response.json())
                 .then(data => {
@@ -331,7 +356,7 @@
                         };
                         updateLocationDisplay();
                     } else {
-                        // Try ipinfo.io as fallback
+                        // Try ipinfo.io as next fallback
                         tryIpInfo();
                     }
                 })
@@ -342,10 +367,15 @@
                 });
         }
 
-        // Fallback to ipinfo.io
+        // Fallback to ipinfo.io (without token)
         function tryIpInfo() {
-            fetch('https://ipinfo.io/json?token=6b7c6c2b8c4a4f')
-                .then(response => response.json())
+            fetch('https://ipinfo.io/json')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('ipinfo.io request failed');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     userLocation = {
                         city: data.city || 'Unknown',
@@ -357,6 +387,31 @@
                 })
                 .catch(error => {
                     console.error('Error with ipinfo.io:', error);
+                    // Try ipgeolocation.io as next fallback
+                    tryIpGeolocation();
+                });
+        }
+
+        // Fallback to ipgeolocation.io
+        function tryIpGeolocation() {
+            fetch('https://api.ipgeolocation.io/ipgeo?apiKey=free')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('ipgeolocation.io request failed');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    userLocation = {
+                        city: data.city || 'Unknown',
+                        region: data.state_prov || 'Unknown',
+                        country: data.country_name || 'Unknown',
+                        ip: data.ip || 'Unknown'
+                    };
+                    updateLocationDisplay();
+                })
+                .catch(error => {
+                    console.error('Error with ipgeolocation.io:', error);
                     // Try browser geolocation as last resort
                     tryBrowserGeolocation();
                 });
